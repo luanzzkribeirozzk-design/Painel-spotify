@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.webkit.*
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -35,7 +34,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
 
+        // Habilita hardware acceleration para video
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+        )
+
         webView = WebView(this)
+        webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
         setContentView(webView)
 
         webView.settings.apply {
@@ -46,25 +52,32 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             cacheMode = WebSettings.LOAD_NO_CACHE
-            // Essencial para YouTube IFrame API
-            userAgentString = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            // User-Agent do Chrome - necessario para YouTube aceitar embed
+            userAgentString = "Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36"
         }
 
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
 
-        // WebChromeClient com suporte a autoplay de audio/video
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(msg: ConsoleMessage?): Boolean {
-                android.util.Log.d("SpotifyFF", msg?.message() ?: "")
+                android.util.Log.d("SpotifyFF", "[${msg?.messageLevel()}] ${msg?.message()}")
                 return true
+            }
+            // Necessario para autoplay de audio/video no Android
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
             }
         }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
-                // Deixa YouTube e outros requests de API passarem normalmente
-                if (url.contains("youtube.com") || url.contains("ytimg.com") || url.startsWith("file://")) {
+                // Deixa YouTube, Google e file:// passarem normalmente
+                if (url.startsWith("file://") ||
+                    url.contains("youtube.com") ||
+                    url.contains("ytimg.com") ||
+                    url.contains("googlevideo.com") ||
+                    url.contains("googleapis.com")) {
                     return false
                 }
                 return try {
