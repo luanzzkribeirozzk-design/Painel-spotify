@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Spotify</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --green:#1DB954; --bg:#121212; --bg2:#181818; --bg3:#282828;
+  --txt:#fff; --txt2:#B3B3B3;
+}
+html,body { height:100%; overflow:hidden; background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;
+  max-width:480px; margin:0 auto; display:flex; flex-direction:column; }
+
+/* ── TOP BAR ── */
+.topbar { display:flex; align-items:center; padding:14px 14px 10px; gap:10px; flex-shrink:0; background:var(--bg); }
+.sp-logo { width:30px; height:30px; }
+.search-wrap { flex:1; background:#fff; border-radius:6px; display:flex; align-items:center; padding:8px 12px; gap:8px; }
+.search-wrap i { color:#555; font-size:14px; }
+.search-wrap input { border:none; outline:none; background:transparent; color:#000; font-size:14px; width:100%; }
+.search-wrap input::placeholder { color:#888; }
+
+/* ── MAIN SCROLL ── */
+.main { flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:130px; }
+.main::-webkit-scrollbar { display:none; }
+
+/* ── HOME ── */
+#home-view { padding:14px; }
+.section-title { font-size:18px; font-weight:700; margin:18px 0 12px; }
+.section-title:first-child { margin-top:0; }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; }
+.qcard { background:var(--bg3); border-radius:6px; display:flex; align-items:center; overflow:hidden; height:56px; cursor:pointer; }
+.qcard img { width:56px; height:56px; object-fit:cover; flex-shrink:0; }
+.qcard span { font-size:12px; font-weight:700; padding:0 10px; line-height:1.3; }
+
+.hscroll { display:flex; gap:14px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+.hscroll::-webkit-scrollbar { display:none; }
+.pcard { flex-shrink:0; width:138px; cursor:pointer; }
+.pcard img { width:138px; height:138px; border-radius:8px; object-fit:cover; }
+.pcard .pt { font-size:13px; font-weight:600; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pcard .ps { font-size:11px; color:var(--txt2); margin-top:2px; }
+
+/* ── SEARCH GENRES ── */
+#search-view { padding:14px; display:none; }
+#search-view h2 { font-size:20px; font-weight:700; margin-bottom:16px; }
+.genre-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.gcard { height:88px; border-radius:8px; display:flex; align-items:flex-end; padding:10px 12px; font-size:14px; font-weight:700; cursor:pointer; }
+
+/* ── RESULTS ── */
+#results-view { padding:14px; display:none; }
+.top-label { font-size:12px; font-weight:700; color:var(--txt2); letter-spacing:.5px; text-transform:uppercase; margin-bottom:10px; }
+
+.top-card { background:var(--bg3); border-radius:10px; padding:16px; margin-bottom:20px; cursor:pointer; position:relative; }
+.top-card img { width:80px; height:80px; border-radius:4px; margin-bottom:10px; box-shadow:0 8px 24px rgba(0,0,0,.6); }
+.top-card .tc-title { font-size:20px; font-weight:700; }
+.top-card .tc-sub { font-size:13px; color:var(--txt2); margin-top:4px; }
+.top-card .tc-play { position:absolute; bottom:16px; right:16px; width:48px; height:48px;
+  background:var(--green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; color:#000; }
+
+.trow { display:flex; align-items:center; gap:12px; padding:8px 2px; cursor:pointer; border-radius:6px; position:relative; }
+.trow img { width:48px; height:48px; border-radius:4px; object-fit:cover; flex-shrink:0; }
+.trow-info { flex:1; min-width:0; }
+.trow-title { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.trow-title.active { color:var(--green); }
+.trow-art { font-size:12px; color:var(--txt2); margin-top:2px; }
+.trow-dur { font-size:12px; color:var(--txt2); flex-shrink:0; }
+
+/* ── LIBRARY ── */
+#library-view { padding:14px; display:none; }
+#library-view h2 { font-size:22px; font-weight:700; margin-bottom:18px; }
+.lrow { display:flex; align-items:center; gap:14px; padding:8px 0; cursor:pointer; }
+.lrow img { width:54px; height:54px; border-radius:4px; object-fit:cover; }
+.lrow-name { font-size:14px; font-weight:600; }
+.lrow-sub { font-size:12px; color:var(--txt2); margin-top:2px; }
+
+/* ── PLAYER BAR ── */
+.player-bar { position:fixed; bottom:56px; left:50%; transform:translateX(-50%); width:100%; max-width:480px; padding:0 8px; z-index:50; display:none; }
+.player-inner { background:#282828; border-radius:10px 10px 0 0; padding:10px 12px 6px; display:flex; align-items:center; gap:10px; }
+.player-inner img { width:44px; height:44px; border-radius:4px; object-fit:cover; }
+.pi-info { flex:1; min-width:0; }
+.pi-title { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pi-art { font-size:11px; color:var(--txt2); }
+.pi-right { display:flex; align-items:center; gap:14px; }
+.pi-right i { font-size:20px; cursor:pointer; }
+.pi-heart { font-size:17px; cursor:pointer; }
+.pi-heart.liked { color:var(--green); }
+.prog-wrap { padding:0 12px 8px; background:#282828; border-radius:0 0 10px 10px; }
+.prog { height:2px; background:#535353; border-radius:2px; cursor:pointer; }
+.prog-fill { height:100%; background:var(--green); border-radius:2px; width:0%; transition:width .4s linear; }
+
+/* PLAY BARS ANIM */
+@keyframes barUp { 0%,100%{height:3px}50%{height:13px} }
+.bars { display:flex; align-items:flex-end; gap:2px; height:14px; }
+.bars span { width:3px; background:var(--green); border-radius:2px; height:3px; }
+.bars.play span:nth-child(1) { animation:barUp .7s ease-in-out infinite; }
+.bars.play span:nth-child(2) { animation:barUp .7s ease-in-out .18s infinite; }
+.bars.play span:nth-child(3) { animation:barUp .7s ease-in-out .36s infinite; }
+
+/* ── NOW PLAYING FULL ── */
+.npf { display:none; position:fixed; inset:0; max-width:480px; margin:0 auto;
+  background:linear-gradient(180deg,#1a0530 0%,#121212 60%); z-index:200;
+  flex-direction:column; padding:24px 24px 36px; }
+.npf.show { display:flex; animation:slideUp .28s ease; }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.npf-head { display:flex; align-items:center; gap:16px; margin-bottom:28px; }
+.npf-head i { font-size:20px; cursor:pointer; }
+.npf-head span { flex:1; text-align:center; font-size:11px; font-weight:700; color:var(--txt2); letter-spacing:1px; text-transform:uppercase; }
+.npf-cover { width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; box-shadow:0 24px 64px rgba(0,0,0,.8); margin-bottom:24px; }
+.npf-info { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.npf-track { font-size:22px; font-weight:700; }
+.npf-art { font-size:14px; color:var(--txt2); margin-top:4px; }
+.npf-heart { font-size:24px; cursor:pointer; }
+.npf-heart.liked { color:var(--green); }
+.npf-prog { height:4px; background:#535353; border-radius:4px; cursor:pointer; margin-bottom:6px; }
+.npf-prog-fill { height:100%; background:#fff; border-radius:4px; width:0%; transition:width .5s linear; }
+.npf-times { display:flex; justify-content:space-between; font-size:11px; color:var(--txt2); margin-bottom:28px; }
+.npf-ctrl { display:flex; align-items:center; justify-content:space-between; }
+.npf-ctrl i { font-size:22px; color:var(--txt2); cursor:pointer; }
+.npf-playbtn { width:62px; height:62px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.npf-playbtn i { font-size:26px; color:#000; margin-left:3px; }
+
+/* ── BOTTOM NAV ── */
+.bot-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%;
+  max-width:480px; background:#000; display:flex; border-top:1px solid #282828; z-index:100; }
+.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 0; gap:4px; cursor:pointer; }
+.nav-btn i { font-size:21px; color:var(--txt2); }
+.nav-btn span { font-size:10px; color:var(--txt2); }
+.nav-btn.on i, .nav-btn.on span { color:#fff; }
+
+/* ══════ FF PANEL ══════ */
+#ff-panel {
+  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:295px; border-radius:20px; z-index:999; padding:18px 16px 16px;
+  background:#7c3aed;
+  box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 20px 60px rgba(0,0,0,.7);
+}
+#ff-panel.blue  { background:#1565C0; }
+#ff-panel.gray  { background:#424242; }
+#ff-panel.purple{ background:#7c3aed; }
+@keyframes panelPop { from{opacity:0;transform:translate(-50%,-50%) scale(.8)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+#ff-panel.show { display:block; animation:panelPop .25s cubic-bezier(.34,1.56,.64,1); }
+
+.panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.panel-title { font-size:15px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#fff;
+  text-shadow:0 0 12px rgba(255,255,255,.35); }
+.panel-x { width:26px; height:26px; background:rgba(0,0,0,.35); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; color:#fff; }
+
+.tog-row { display:flex; align-items:center; justify-content:space-between;
+  background:rgba(0,0,0,.25); border-radius:10px; padding:10px 14px; margin-bottom:8px; }
+.tog-label { font-size:13px; font-weight:700; color:#fff; }
+.tog { width:44px; height:24px; background:rgba(255,255,255,.22); border-radius:12px;
+  position:relative; cursor:pointer; transition:background .2s; }
+.tog.on { background:#1DB954; }
+.tog::after { content:''; position:absolute; width:20px; height:20px; background:#fff;
+  border-radius:50%; top:2px; left:2px; transition:left .18s; box-shadow:0 2px 4px rgba(0,0,0,.3); }
+.tog.on::after { left:22px; }
+
+.slider-box { background:rgba(0,0,0,.25); border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+.slider-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.slider-lbl { font-size:13px; font-weight:700; color:#fff; }
+.slider-val { font-size:13px; font-weight:700; color:#fff; }
+input[type=range] { -webkit-appearance:none; width:100%; height:4px; border-radius:4px;
+  background:rgba(255,255,255,.25); outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px;
+  background:#fff; border-radius:50%; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+
+.color-box { background:rgba(0,0,0,.25); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+.color-lbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.65); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+.dots { display:flex; gap:10px; }
+.dot { width:34px; height:34px; border-radius:50%; cursor:pointer; border:3px solid transparent;
+  display:flex; align-items:center; justify-content:center; transition:transform .15s,border-color .15s; }
+.dot.sel { border-color:#fff; transform:scale(1.15); }
+.dot i { font-size:12px; color:#fff; opacity:0; transition:opacity .15s; }
+.dot.sel i { opacity:1; }
+.dot-b { background:#1565C0; } .dot-g { background:#424242; } .dot-p { background:#7c3aed; }
+
+.ff-btn { width:100%; background:linear-gradient(135deg,#FF6B00,#FFD000);
+  border:none; border-radius:12px; padding:14px; color:#fff; font-size:14px;
+  font-weight:800; letter-spacing:1px; text-transform:uppercase;
+  display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;
+  box-shadow:0 4px 18px rgba(255,100,0,.45); transition:transform .1s; }
+.ff-btn:active { transform:scale(.97); }
+.ff-icon { font-size:18px; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <svg class="sp-logo" viewBox="0 0 24 24" fill="#1DB954">
+    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+  </svg>
+  <div class="search-wrap" onclick="focusSearch()">
+    <i class="fas fa-search"></i>
+    <input type="text" id="searchInput" placeholder="O que você quer ouvir?"
+      oninput="onSearch(this.value)" onfocus="showSearch()">
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HOME -->
+  <div id="home-view">
+    <div class="grid2">
+      <div class="qcard" onclick="play(4)">
+        <img src="https://i.scdn.co/image/ab67616d0000b2739f3de51cf8b7a81a3789e1bc" alt="">
+        <span>A Raposa e as Uvas</span>
+      </div>
+      <div class="qcard" onclick="play(0)">
+        <img src="https://i.scdn.co/image/ab67616d0000b273b46f74097655d7f353caab14" alt="">
+        <span>Garçom</span>
+      </div>
+      <div class="qcard" onclick="play(1)">
+        <img src="https://i.scdn.co/image/ab67616d0000b273fe5849b5db89e4e65ec0be7e" alt="">
+        <span>Reginaldo Rossi</span>
+      </div>
+      <div class="qcard" onclick="play(2)">
+        <img src="https://i.scdn.co/image/ab67616d0000b2732a038d3bf875d23e4aeaa84e" alt="">
+        <span>Românticas</span>
+      </div>
+    </div>
+
+    <p class="section-title">Tocadas recentemente</p>
+    <div class="hscroll" id="recentRow"></div>
+
+    <p class="section-title">Artistas parecidos</p>
+    <div class="hscroll">
+      <div class="pcard">
+        <img src="https://i.scdn.co/image/ab6761610000e5eb24d878de9f856e3f6879ee53" alt="" style="border-radius:50%">
+        <div class="pt">Amado Batista</div><div class="ps">Artista</div>
+      </div>
+      <div class="pcard">
+        <img src="https://i.scdn.co/image/ab6761610000e5eb19c2790744c792d2203879a4" alt="" style="border-radius:50%">
+        <div class="pt">Waldick Soriano</div><div class="ps">Artista</div>
+      </div>
+      <div class="pcard">
+        <img src="https://i.scdn.co/image/ab6761610000e5ebb95c91d640f5de5a4a62fde" alt="" style="border-radius:50%">
+        <div class="pt">Nelson Ned</div><div class="ps">Artista</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div id="search-view">
+    <h2>Explorar categorias</h2>
+    <div class="genre-grid">
+      <div class="gcard" style="background:linear-gradient(135deg,#C0392B,#E74C3C)">Romântico</div>
+      <div class="gcard" style="background:linear-gradient(135deg,#1A5276,#2980B9)">Sofrência</div>
+      <div class="gcard" style="background:linear-gradient(135deg,#1E8449,#27AE60)">Sertanejo</div>
+      <div class="gcard" style="background:linear-gradient(135deg,#6C3483,#9B59B6)">Forró</div>
+      <div class="gcard" style="background:linear-gradient(135deg,#784212,#D4AC0D)">Pagode</div>
+      <div class="gcard" style="background:linear-gradient(135deg,#0B5345,#148F77)">Arrocha</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results-view">
+    <div id="topResult"></div>
+    <div id="trackList"></div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div id="library-view">
+    <h2>Sua Biblioteca</h2>
+    <div id="libList"></div>
+  </div>
+
+</div>
+
+<!-- PLAYER BAR -->
+<div class="player-bar" id="playerBar">
+  <div class="player-inner" onclick="openNPF()">
+    <img id="pImg" src="" alt="">
+    <div class="pi-info">
+      <div class="pi-title" id="pTitle"></div>
+      <div class="pi-art" id="pArt"></div>
+    </div>
+    <div class="pi-right">
+      <div class="bars play" id="playBars"><span></span><span></span><span></span></div>
+      <i class="fas fa-heart pi-heart" id="heartBar" onclick="event.stopPropagation();toggleLike()"></i>
+      <i class="fas fa-backward" onclick="event.stopPropagation();prevT()"></i>
+      <i class="fas fa-pause" id="playBtn" onclick="event.stopPropagation();togglePlay()"></i>
+      <i class="fas fa-forward" onclick="event.stopPropagation();nextT()"></i>
+    </div>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog" onclick="seek(event)"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+</div>
+
+<!-- NPF -->
+<div class="npf" id="npf">
+  <div class="npf-head">
+    <i class="fas fa-chevron-down" onclick="closeNPF()"></i>
+    <span>Tocando agora</span>
+    <i class="fas fa-ellipsis-h"></i>
+  </div>
+  <img class="npf-cover" id="npfCover" src="" alt="">
+  <div class="npf-info">
+    <div>
+      <div class="npf-track" id="npfTitle"></div>
+      <div class="npf-art" id="npfArt"></div>
+    </div>
+    <i class="fas fa-heart npf-heart" id="heartNPF" onclick="toggleLike()"></i>
+  </div>
+  <div class="npf-prog" onclick="seek(event,1)"><div class="npf-prog-fill" id="npfFill"></div></div>
+  <div class="npf-times"><span id="npfCur">0:00</span><span id="npfDur">0:00</span></div>
+  <div class="npf-ctrl">
+    <i class="fas fa-random"></i>
+    <i class="fas fa-backward" onclick="prevT()"></i>
+    <div class="npf-playbtn" onclick="togglePlay()"><i class="fas fa-pause" id="npfPlayIcon"></i></div>
+    <i class="fas fa-forward" onclick="nextT()"></i>
+    <i class="fas fa-redo"></i>
+  </div>
+</div>
+
+<!-- FF PANEL -->
+<div id="ff-panel">
+  <div class="panel-head">
+    <div class="panel-title">⚡ FF Tools</div>
+    <div class="panel-x" onclick="closePanel()">✕</div>
+  </div>
+  <div class="tog-row">
+    <div class="tog-label">🎯 Aimbot</div>
+    <div class="tog" id="t1" onclick="tog('t1')"></div>
+  </div>
+  <div class="tog-row">
+    <div class="tog-label">🛡️ Auxílio</div>
+    <div class="tog" id="t2" onclick="tog('t2')"></div>
+  </div>
+  <div class="tog-row">
+    <div class="tog-label">⚡ Auxílio V2</div>
+    <div class="tog" id="t3" onclick="tog('t3')"></div>
+  </div>
+  <div class="slider-box">
+    <div class="slider-head">
+      <div class="slider-lbl">🎮 Sensibilidade</div>
+      <div class="slider-val" id="sVal">50%</div>
+    </div>
+    <input type="range" min="0" max="100" value="50" oninput="document.getElementById('sVal').textContent=this.value+'%'">
+  </div>
+  <div class="color-box">
+    <div class="color-lbl">Cor do painel</div>
+    <div class="dots">
+      <div class="dot dot-b" onclick="setColor('blue',this)"><i class="fas fa-check"></i></div>
+      <div class="dot dot-g" onclick="setColor('gray',this)"><i class="fas fa-check"></i></div>
+      <div class="dot dot-p sel" onclick="setColor('purple',this)"><i class="fas fa-check"></i></div>
+    </div>
+  </div>
+  <button class="ff-btn" onclick="openFF()">
+    <span class="ff-icon">🔥</span> ABRIR FREE FIRE
+  </button>
+</div>
+
+<!-- AUDIO -->
+<audio id="audio"></audio>
+
+<!-- BOTTOM NAV -->
+<div class="bot-nav">
+  <div class="nav-btn on" id="nb0" onclick="goHome()">
+    <i class="fas fa-home"></i><span>Início</span>
+  </div>
+  <div class="nav-btn" id="nb1" onclick="goSearch()">
+    <i class="fas fa-search"></i><span>Buscar</span>
+  </div>
+  <div class="nav-btn" id="nb2" onclick="goLib()">
+    <i class="fas fa-book"></i><span>Biblioteca</span>
+  </div>
+</div>
+
+<script>
+// ═══ TRACKS ═══
+const TRACKS = [
+  { title:"Garçom", artist:"Reginaldo Rossi", dur:"3:28",
+    img:"https://i.scdn.co/image/ab67616d0000b273b46f74097655d7f353caab14",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+  { title:"Me Chama que Eu Vou", artist:"Reginaldo Rossi", dur:"3:12",
+    img:"https://i.scdn.co/image/ab67616d0000b273fe5849b5db89e4e65ec0be7e",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+  { title:"Caminhoneiro", artist:"Reginaldo Rossi", dur:"3:44",
+    img:"https://i.scdn.co/image/ab67616d0000b2732a038d3bf875d23e4aeaa84e",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+  { title:"Estou Apaixonado", artist:"Reginaldo Rossi", dur:"3:08",
+    img:"https://i.scdn.co/image/ab67616d0000b273851ade6e89ac59e9b26f3db3",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+  { title:"A Raposa e as Uvas", artist:"Reginaldo Rossi", dur:"3:52",
+    img:"https://i.scdn.co/image/ab67616d0000b2739f3de51cf8b7a81a3789e1bc",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+  { title:"Minha Namorada", artist:"Reginaldo Rossi", dur:"2:57",
+    img:"https://i.scdn.co/image/ab67616d0000b273b46f74097655d7f353caab14",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+  { title:"Te Amo, Te Amo, Te Amo", artist:"Reginaldo Rossi", dur:"3:33",
+    img:"https://i.scdn.co/image/ab67616d0000b273fe5849b5db89e4e65ec0be7e",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+  { title:"Cigano", artist:"Reginaldo Rossi", dur:"3:20",
+    img:"https://i.scdn.co/image/ab67616d0000b2732a038d3bf875d23e4aeaa84e",
+    src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
+];
+
+// ═══ STATE ═══
+let cur = -1, playing = false, liked = false;
+let lastTap = 0, lastTapIdx = -1;
+let outsideTaps = 0, panelOpen = false;
+const audio = document.getElementById('audio');
+
+// Build recent row & library
+function buildUI() {
+  const rr = document.getElementById('recentRow');
+  const ll = document.getElementById('libList');
+  TRACKS.forEach((t,i) => {
+    rr.innerHTML += `<div class="pcard" onclick="play(${i})">
+      <img src="${t.img}" alt=""><div class="pt">${t.title}</div><div class="ps">${t.artist}</div></div>`;
+    ll.innerHTML += `<div class="lrow" onclick="play(${i})">
+      <img src="${t.img}" alt=""><div>
+        <div class="lrow-name">${t.title}</div>
+        <div class="lrow-sub">${t.artist}</div>
+      </div></div>`;
+  });
+}
+buildUI();
+
+// ═══ PLAY ═══
+function play(i) {
+  const now = Date.now();
+  if (lastTapIdx === i && now - lastTap < 450) {
+    openPanel(); lastTapIdx = -1; return;
+  }
+  lastTapIdx = i; lastTap = now;
+  cur = i;
+  const t = TRACKS[i];
+  audio.src = t.src;
+  audio.play().catch(()=>{});
+  playing = true;
+  liked = false;
+  updateUI();
+  startProg();
+}
+
+function updateUI() {
+  if (cur < 0) return;
+  const t = TRACKS[cur];
+  document.getElementById('playerBar').style.display = 'block';
+  document.getElementById('pImg').src = t.img;
+  document.getElementById('pTitle').textContent = t.title;
+  document.getElementById('pArt').textContent = t.artist;
+  document.getElementById('npfCover').src = t.img;
+  document.getElementById('npfTitle').textContent = t.title;
+  document.getElementById('npfArt').textContent = t.artist;
+  document.getElementById('npfDur').textContent = t.dur;
+
+  const icon = playing ? 'fa-pause' : 'fa-play';
+  document.getElementById('playBtn').className = `fas ${icon}`;
+  document.getElementById('npfPlayIcon').className = `fas ${icon}`;
+  const bars = document.getElementById('playBars');
+  playing ? bars.classList.add('play') : bars.classList.remove('play');
+  updateLike();
+}
+
+function togglePlay() {
+  if (cur < 0) return;
+  if (playing) { audio.pause(); playing = false; }
+  else { audio.play().catch(()=>{}); playing = true; }
+  updateUI();
+}
+function prevT() { if(cur<=0) cur=TRACKS.length; play(cur-1); }
+function nextT() { play((cur+1)%TRACKS.length); }
+audio.addEventListener('ended', nextT);
+
+// Progress
+let progI = null;
+function startProg() {
+  clearInterval(progI);
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('npfFill').style.width='0%';
+  progI = setInterval(()=>{
+    if (!audio.duration) return;
+    const p = (audio.currentTime/audio.duration)*100;
+    document.getElementById('progFill').style.width = p+'%';
+    document.getElementById('npfFill').style.width = p+'%';
+    document.getElementById('npfCur').textContent = fmt(audio.currentTime);
+  }, 500);
+}
+function fmt(s) { const m=Math.floor(s/60); return `${m}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+function seek(e,npf) {
+  if(!audio.duration) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  audio.currentTime = ((e.clientX-r.left)/r.width)*audio.duration;
+}
+
+// Like
+function toggleLike() { liked=!liked; updateLike(); }
+function updateLike() {
+  const hb = document.getElementById('heartBar');
+  const hn = document.getElementById('heartNPF');
+  if(liked){ hb.classList.add('liked'); hn.classList.add('liked'); }
+  else{ hb.classList.remove('liked'); hn.classList.remove('liked'); }
+}
+
+// NPF
+function openNPF() { document.getElementById('npf').classList.add('show'); }
+function closeNPF() { document.getElementById('npf').classList.remove('show'); }
+
+// ═══ SEARCH ═══
+function onSearch(v) {
+  if (!v.trim()) { showSearch(); return; }
+  showResults(v.trim().toLowerCase());
+}
+function showResults(q) {
+  setView('results-view');
+  const matched = TRACKS.filter(t =>
+    t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+  const isRap = q.includes('raposa')||q.includes('uvas')||q.includes('reginaldo');
+  const top = isRap ? TRACKS[4] : (matched[0]||null);
+  const topIdx = isRap ? 4 : TRACKS.indexOf(top);
+  const list = isRap ? TRACKS : matched;
+
+  document.getElementById('topResult').innerHTML = top ? `
+    <p class="top-label">Melhor resultado</p>
+    <div class="top-card" onclick="handleClick(${topIdx})">
+      <img src="${top.img}" alt="">
+      <div class="tc-title">${top.title}</div>
+      <div class="tc-sub">Música • ${top.artist}</div>
+      <div class="tc-play"><i class="fas fa-play"></i></div>
+    </div>
+    <p class="top-label">Músicas</p>` : `<p style="color:var(--txt2);margin-bottom:16px">Nenhum resultado para "<b style="color:#fff">${q}</b>"</p>`;
+
+  document.getElementById('trackList').innerHTML = list.map((t,_)=>{
+    const ri = TRACKS.indexOf(t);
+    return `<div class="trow" onclick="handleClick(${ri})">
+      <img src="${t.img}" alt="">
+      <div class="trow-info">
+        <div class="trow-title ${cur===ri?'active':''}">${t.title}</div>
+        <div class="trow-art">${t.artist}</div>
+      </div>
+      <span class="trow-dur">${t.dur}</span>
+    </div>`;
+  }).join('');
+}
+
+function handleClick(i) {
+  const now = Date.now();
+  if (lastTapIdx===i && now-lastTap<450) { openPanel(); lastTapIdx=-1; return; }
+  lastTapIdx=i; lastTap=now;
+  play(i);
+  document.querySelectorAll('.trow-title').forEach(e=>e.classList.remove('active'));
+}
+
+// ═══ VIEWS ═══
+function setView(id) {
+  ['home-view','search-view','results-view','library-view'].forEach(v=>{
+    document.getElementById(v).style.display = v===id?'block':'none';
+  });
+}
+function setNav(i) {
+  [0,1,2].forEach(n=>{
+    document.getElementById('nb'+n).classList.toggle('on',n===i);
+  });
+}
+function goHome() { setView('home-view'); setNav(0); document.getElementById('searchInput').value=''; }
+function goSearch() { setView('search-view'); setNav(1); }
+function goLib() { setView('library-view'); setNav(2); }
+function showSearch() { setView('search-view'); setNav(1); }
+function focusSearch() { goSearch(); setTimeout(()=>document.getElementById('searchInput').focus(),100); }
+
+// ═══ FF PANEL ═══
+function openPanel() {
+  panelOpen = true; outsideTaps = 0;
+  document.getElementById('ff-panel').classList.add('show');
+}
+function closePanel() {
+  panelOpen = false;
+  document.getElementById('ff-panel').classList.remove('show');
+  document.getElementById('ff-panel').style.display = 'none';
+  // re-enable display for next open via show class
+  setTimeout(()=>{ document.getElementById('ff-panel').style.display = ''; },50);
+}
+document.addEventListener('click', e => {
+  if (!panelOpen) return;
+  if (document.getElementById('ff-panel').contains(e.target)) { outsideTaps=0; return; }
+  outsideTaps++;
+  if (outsideTaps >= 3) closePanel();
+});
+
+function tog(id) { document.getElementById(id).classList.toggle('on'); }
+
+function setColor(c, el) {
+  const p = document.getElementById('ff-panel');
+  p.className = 'show ' + c;
+  document.querySelectorAll('.dot').forEach(d=>d.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+// ═══ ABRIR FF — usa Android JS Bridge ═══
+function openFF() {
+  if (typeof AndroidBridge !== 'undefined') {
+    // Chama o método nativo Kotlin que lança o Intent do Free Fire
+    AndroidBridge.openFreeFire();
+  } else {
+    // fallback browser (não vai funcionar em browser, apenas no APK)
+    window.location.href = 'intent://com.dts.freefireth#Intent;scheme=https;package=com.dts.freefireth;end';
+  }
+}
+</script>
+</body>
+</html>
