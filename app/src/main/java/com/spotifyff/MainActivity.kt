@@ -12,104 +12,74 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
-    // ── JavaScript Bridge ──────────────────────────────────────────
     inner class AndroidBridge {
-
         @JavascriptInterface
         fun openFreeFire() {
-            val freefirePackage = "com.dts.freefireth"
-            val pm: PackageManager = packageManager
-
+            val pkg = "com.dts.freefireth"
             try {
-                // Verifica se o Free Fire está instalado
-                pm.getPackageInfo(freefirePackage, 0)
-
-                // Lança o Free Fire diretamente pelo Intent de LAUNCHER
-                val launchIntent: Intent? = pm.getLaunchIntentForPackage(freefirePackage)
-                if (launchIntent != null) {
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(launchIntent)
-                } else {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Free Fire não encontrado",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                packageManager.getPackageInfo(pkg, 0)
+                val intent = packageManager.getLaunchIntentForPackage(pkg)
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
                 }
             } catch (e: PackageManager.NameNotFoundException) {
-                // FF não instalado — abre Play Store
                 runOnUiThread {
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("market://details?id=$freefirePackage")
-                    )
-                    startActivity(intent)
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))
                 }
             }
         }
     }
-    // ──────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Esconde action bar para tela cheia
         supportActionBar?.hide()
 
         webView = WebView(this)
         setContentView(webView)
 
-        // Configurações do WebView
         webView.settings.apply {
-            javaScriptEnabled       = true
-            domStorageEnabled       = true
-            allowFileAccess         = true
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
-            cacheMode               = WebSettings.LOAD_DEFAULT
-            mixedContentMode        = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            cacheMode = WebSettings.LOAD_NO_CACHE
+            // Essencial para YouTube IFrame API
+            userAgentString = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
         }
 
-        // Registra o JS Bridge com o nome "AndroidBridge"
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
 
-        // Abre links externos no browser, tudo mais no WebView
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                val url = request?.url?.toString() ?: return false
-                return if (url.startsWith("file://")) {
-                    false // deixa carregar normalmente
-                } else {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    startActivity(intent)
-                    true
-                }
-            }
-        }
-
-        // WebChromeClient para console.log aparecer no Logcat
+        // WebChromeClient com suporte a autoplay de audio/video
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(msg: ConsoleMessage?): Boolean {
-                android.util.Log.d("SpotifyFF_JS", msg?.message() ?: "")
+                android.util.Log.d("SpotifyFF", msg?.message() ?: "")
                 return true
             }
         }
 
-        // Carrega o HTML da pasta assets
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return false
+                // Deixa YouTube e outros requests de API passarem normalmente
+                if (url.contains("youtube.com") || url.contains("ytimg.com") || url.startsWith("file://")) {
+                    return false
+                }
+                return try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    true
+                } catch (e: Exception) { false }
+            }
+        }
+
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // Back button navega no WebView se possível
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
+        if (webView.canGoBack()) webView.goBack()
+        else super.onBackPressed()
     }
 }
